@@ -17,10 +17,8 @@ import (
 	"github.com/pingcap-incubator/tinykv/kv/storage/standalone_storage"
 	"github.com/pingcap-incubator/tinykv/log"
 	"github.com/pingcap-incubator/tinykv/proto/pkg/tinykvpb"
-	//"google.golang.org/grpc"
-	//"google.golang.org/grpc/keepalive"
-	"grpc"
-	"grpc/keepalive"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 var (
