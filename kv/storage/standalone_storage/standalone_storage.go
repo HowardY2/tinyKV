@@ -13,22 +13,18 @@ import (
 type StandAloneStorage struct {
 	// Your Data Here (1).
 	engine *engine_util.Engines
-	conf   *config.Config
-}
-
-type StandAloneStorageReader struct {
-	txn *badger.Txn
 }
 
 func NewStandAloneStorage(conf *config.Config) *StandAloneStorage {
 	// Your Code Here (1).
-	return &StandAloneStorage{conf: conf}
+	return &StandAloneStorage{
+		engine: engine_util.NewEngines(engine_util.CreateDB(conf.DBPath+"/kv", false),
+			engine_util.CreateDB(conf.DBPath+"/raft", true), "kv", "raft"),
+	}
 }
 
 func (s *StandAloneStorage) Start() error {
 	// Your Code Here (1).
-	s.engine = engine_util.NewEngines(engine_util.CreateDB(s.conf.DBPath+"/kv", false),
-		engine_util.CreateDB(s.conf.DBPath+"/raft", true), "kv", "raft")
 	return nil
 }
 
@@ -49,34 +45,31 @@ func (s *StandAloneStorage) Reader(ctx *kvrpcpb.Context) (storage.StorageReader,
 
 func (s *StandAloneStorage) Write(ctx *kvrpcpb.Context, batch []storage.Modify) error {
 	// Your Code Here (1).
-	txn := s.engine.Kv.NewTransaction(true)
-	defer txn.Discard()
 	for _, m := range batch {
 		switch m.Data.(type) {
 		case storage.Put:
-			if err := txn.Set(engine_util.KeyWithCF(m.Cf(), m.Key()), m.Value()); err != nil {
+			if err := engine_util.PutCF(s.engine.Kv, m.Cf(), m.Key(), m.Value()); err != nil {
 				return err
 			}
 		case storage.Delete:
-			if err := txn.Delete(engine_util.KeyWithCF(m.Cf(), m.Key())); err != nil {
+			if err := engine_util.DeleteCF(s.engine.Kv, m.Cf(), m.Key()); err != nil {
 				return err
 			}
 		}
-		if err := txn.Commit(); err != nil {
-			return err
-		}
-	}
 
+	}
 	return nil
+}
+
+type StandAloneStorageReader struct {
+	txn *badger.Txn
 }
 
 func (reader *StandAloneStorageReader) GetCF(cf string, key []byte) ([]byte, error) {
 	val, err := engine_util.GetCFFromTxn(reader.txn, cf, key)
-
 	if err == badger.ErrKeyNotFound {
 		return nil, nil
 	}
-
 	return val, nil
 }
 
